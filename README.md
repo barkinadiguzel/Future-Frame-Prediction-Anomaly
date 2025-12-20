@@ -125,18 +125,22 @@ Future-Frame-Prediction-Anomaly/
 │   │
 │   ├── blocks/
 │   │   ├── encoder_block.py       # U-Net encoder (downsampling)
-│   │   └── decoder_block.py       # U-Net decoder (upsampling + skip)
+│   │   ├── decoder_block.py       # U-Net decoder (upsampling + skip)
+│   │   └── discriminator_block.py # PatchGAN discriminator
 │   │
 │   ├── model/
-│   │   ├── future_frame_model.py  # U-Net based future frame predictor
-│   │   └── generator.py           # optional wrapper, if needed
+│   │   ├── generator.py           # U-Net future frame predictor
+│   │   ├── discriminator.py       # Patch-based D
+│   │   └── future_frame_gan.py    # G + D training logic
 │   │
 │   ├── losses/
-│   │   ├── intensity_loss.py      # L2 pixel loss
-│   │   ├── gradient_loss.py       # Gradient loss
-│   │   └── optical_flow_loss.py   # Flow consistency loss
+│   │   ├── intensity_loss.py      # L2 pixel loss (Eq.1)
+│   │   ├── gradient_loss.py       # Gradient loss (Eq.2)
+│   │   ├── optical_flow_loss.py   # Flow consistency loss (Eq.3)
+│   │   └── adversarial_loss.py    # Least Squares GAN loss
 │   │
-│   └── config.py                  # λ_int, λ_gd, λ_op
+│   │
+│   └── config.py                  # λ_int, λ_gd, λ_op, λ_adv
 │
 ├── images/
 │   └── figmix.jpg
