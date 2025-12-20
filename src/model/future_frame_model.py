@@ -1,42 +1,43 @@
 import torch
 import torch.nn as nn
-from src.blocks.encoder_block import EncoderBlock
-from src.blocks.decoder_block import DecoderBlock
 
-class FutureFramePredictor(nn.Module):
-    def __init__(self, in_channels=3, feature_channels=[64, 128, 256, 512]):
+from src.model.generator import Generator
+from src.model.discriminator import Discriminator
+
+
+class FutureFrameModel(nn.Module):
+    def __init__(
+        self,
+        in_channels=3,
+        past_frames=4,
+        feature_channels=[64, 128, 256, 512],
+        disc_base_channels=64
+    ):
         super().__init__()
 
-        # Encoder
-        self.encoders = nn.ModuleList()
-        prev_channels = in_channels
-        for out_channels in feature_channels:
-            self.encoders.append(EncoderBlock(prev_channels, out_channels))
-            prev_channels = out_channels
+        # Generator (U-Net)
+        self.generator = Generator(
+            in_channels=in_channels * past_frames,
+            feature_channels=feature_channels,
+            out_channels=in_channels
+        )
 
-        # Decoder
-        self.decoders = nn.ModuleList()
-        reversed_channels = feature_channels[::-1]
-        for i in range(len(reversed_channels)-1):
-            self.decoders.append(
-                DecoderBlock(reversed_channels[i], reversed_channels[i+1])
-            )
-        # Final layer to map to RGB
-        self.final_conv = nn.Conv2d(reversed_channels[-1], in_channels, kernel_size=1)
+        # Discriminator (PatchGAN)
+        self.discriminator = Discriminator(
+            in_channels=in_channels,
+            base_channels=disc_base_channels
+        )
 
-    def forward(self, x):
-        # Encoder forward
-        skips = []
-        out = x
-        for enc in self.encoders:
-            out, skip = enc(out)
-            skips.append(skip)
+    def forward(self, past_frames, future_frame=None):
+        # Predict future frame
+        pred_frame = self.generator(past_frames)
 
-        # Decoder forward with skip connections
-        for i, dec in enumerate(self.decoders):
-            skip = skips[-(i+2)]  # reverse order
-            out = dec(out, skip)
+        # Test mode (no discriminator)
+        if future_frame is None:
+            return pred_frame
 
-        # Final predicted frame
-        pred = self.final_conv(out)
-        return pred
+        # Training mode
+        pred_score = self.discriminator(pred_frame)
+        real_score = self.discriminator(future_frame)
+
+        return pred_frame, pred_score, real_score
